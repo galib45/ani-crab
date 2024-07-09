@@ -260,9 +260,9 @@ dependencies = [
 
 [[package]]
 name = "fuzzypicker"
-version = "0.1.4"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4827d26f1fc99b1bba4566ce89f2f2f98ab80d16e161327ac9381d9d2921103c"
+checksum = "14631ab9d13a12b3fe89621b0452494360b3daad2052ccb13c4f04fd2a2c7d6f"
 dependencies = [
  "crossterm",
  "fuzzy-matcher",
@@ -969,9 +969,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "syn"
-version = "2.0.69"
+version = "2.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201fcda3845c23e8212cd466bfebf0bd20694490fc0356ae8e428e0824a915a6"
+checksum = "2f0209b68b3613b093e0ec905354eccaedcfe83b8cb37cbdeae64026c3064c16"
 dependencies = [
  "proc-macro2",
  "quote",
