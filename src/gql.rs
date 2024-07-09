@@ -1,5 +1,29 @@
+use std::fmt::Display;
+use form_urlencoded::byte_serialize;
 
-pub fn build_query(anime_name: &str) -> (String, String) {
+const BASE_URL: &str = "https://api.allanime.day/api";
+
+fn urlencode<T: AsRef<[u8]>>(input: T) -> String {
+    byte_serialize(input.as_ref()).collect()
+}
+
+pub struct GqlQuery {
+    pub variables: String,
+    pub query: String,
+}
+
+impl GqlQuery {
+    pub fn get_url(&self) -> String {
+        format!(
+            "{}?variables={}&query={}",
+            BASE_URL,
+            urlencode(&self.variables), 
+            urlencode(&self.query)
+        )
+    }
+}
+
+pub fn build_search_query<T: Display>(anime_name: T) -> GqlQuery {
     let variables = format!(r#"{{  
     "search": {{    
         "allowAdult": false,    
@@ -36,6 +60,7 @@ pub fn build_query(anime_name: &str) -> (String, String) {
 	    thumbnail
             season
             availableEpisodes
+            availableEpisodesDetail
 	    episodeDuration
 	    lastEpisodeDate
         }
@@ -44,7 +69,32 @@ pub fn build_query(anime_name: &str) -> (String, String) {
 	}
     }
 }"#.to_string(); 
-    (variables, query)
+    GqlQuery { variables, query }
+}
+
+pub fn build_episode_query
+<A: Display, B: Display, C: Display>
+(id: A, mode: B, ep_no: C) -> GqlQuery {
+    let variables = format!(r#"{{
+    "showId": "{id}",
+    "translationType":"{mode}",
+    "episodeString":"{ep_no}"
+}}"#);
+    let query = r#"query (
+    $showId: String!, 
+    $translationType: VaildTranslationTypeEnumType!, 
+    $episodeString: String!
+) {    
+    episode(
+        showId: $showId        
+        translationType: $translationType        
+        episodeString: $episodeString    
+    ) {        
+        episodeString 
+        sourceUrls    
+    }
+}"#.to_string();
+    GqlQuery { variables, query }
 }
 
 //pub const VAR_QUERY_POPULAR: &str = r#"{

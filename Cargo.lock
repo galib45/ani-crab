@@ -260,9 +260,9 @@ dependencies = [
 
 [[package]]
 name = "fuzzypicker"
-version = "0.1.7"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14631ab9d13a12b3fe89621b0452494360b3daad2052ccb13c4f04fd2a2c7d6f"
+checksum = "743fe867a8f07de04fcff868ce6464e4c9dd8d40478ba494cb0f428602469068"
 dependencies = [
  "crossterm",
  "fuzzy-matcher",

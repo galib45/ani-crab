@@ -38,6 +38,7 @@ pub struct Anime {
     pub thumbnail: String,
     season: Option<Season>,
     available_episodes: AvailableEpisodes,
+    available_episodes_detail: AvailableEpisodesDetail,
     episode_duration: Option<String>,
     last_episode_date: LastEpisodeDate,
 }
@@ -91,6 +92,10 @@ impl Anime {
             self.available_episodes.sub
         )
     }
+
+    pub fn get_episodes_list(&self) -> &Vec<String> {
+        &self.available_episodes_detail.sub
+    }
 }
 
 //fn get_month_name(month: u32) -> &'static str {
@@ -107,6 +112,13 @@ struct AvailableEpisodes {
     sub: u32,
     dub: u32,
     raw: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct AvailableEpisodesDetail {
+    sub: Vec<String>,
+    dub: Vec<String>,
+    raw: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
