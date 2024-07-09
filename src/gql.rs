@@ -34,6 +34,7 @@ pub fn build_query(anime_name: &str) -> (String, String) {
 	    rating
 	    status
 	    thumbnail
+            season
             availableEpisodes
 	    episodeDuration
 	    lastEpisodeDate

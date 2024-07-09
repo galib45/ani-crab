@@ -3,7 +3,7 @@ mod model;
 
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
-//use fuzzypicker::FuzzyPicker;
+use fuzzypicker::FuzzyPicker;
 use form_urlencoded::byte_serialize;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, REFERER};
@@ -32,7 +32,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 	urlencode(&variables), 
 	urlencode(&query)
     );
-    //println!("{url}");
     
     let mut headers = HeaderMap::new();
     headers.insert(REFERER, HeaderValue::from_str("https://allmanga.to")?);
@@ -45,9 +44,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let json: model::Json = serde_json::from_str(&text)?;
     //let json: serde_json::Value = serde_json::from_str(&text)?;
     let anime_list = json.get_anime_list();
-    //println!("{:#?}", anime_list);
-    for anime in anime_list {
-	println!("{anime}");
+    if !anime_list.is_empty() {
+	let mut picker = FuzzyPicker::new(&anime_list);
+	if let Ok(Some(selected)) = picker.pick() {
+	    println!("{:?}", selected);
+	} else {
+	    println!("Selection cancelled.");
+	}
+    } else {
+	println!("No anime found.");
     }
+    
     Ok(())
 }

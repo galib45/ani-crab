@@ -24,7 +24,7 @@ struct Shows {
     //page_info: PageInfo,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Anime {
     #[serde(rename = "_id")]
@@ -36,6 +36,7 @@ pub struct Anime {
     pub rating: Option<String>,
     pub status: Option<String>,
     pub thumbnail: String,
+    season: Option<Season>,
     available_episodes: AvailableEpisodes,
     episode_duration: Option<String>,
     last_episode_date: LastEpisodeDate,
@@ -43,28 +44,34 @@ pub struct Anime {
 
 impl fmt::Display for Anime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f, 
-            "{}, {}, {}, {}", 
-            self.name,
-            self.status.clone().unwrap_or_default(),
-            self.get_last_episode_date(), 
-            self.get_episode_duration()
-        )
+        write!(f, "{}", self.name)?;
+        write!(f, " [")?;
+        let mut inside_square_brackets = 0;
+        let na = "N/A".to_string();
+        let season = self.get_season();
+        let eps = self.get_available_episodes();
+        let duration = self.get_episode_duration();
+        if season != na { 
+            if inside_square_brackets > 0 { write!(f, ", ")?; }
+            write!(f, "{}", season)?;
+            inside_square_brackets += 1;
+        }
+        if inside_square_brackets > 0 { write!(f, ", ")?; }
+        write!(f, "{}", eps)?;
+        if duration != na { 
+            if inside_square_brackets > 0 { write!(f, ", ")?; }
+            write!(f, "{}", duration)?;
+        }
+        write!(f, "]")?;
+        Ok(())
     }
 }
 
 impl Anime {
-    pub fn get_last_episode_date(&self) -> String {
-        let mut output = String::new();
-        if let DateOrEmpty::Date(date) = &self.last_episode_date.sub {
-            if date.month == 0 {
-                output.push_str("N/A");
-            } else {
-                output = format!(
-                    "{} {} {}", date.date, get_month_name(date.month), date.year
-                );
-            }
+    pub fn get_season(&self) -> String {
+        let mut output = "N/A".to_string();
+        if let Some(season) = &self.season {
+            output = format!("{} {}", season.quarter, season.year);
         }
         output
     }
@@ -72,43 +79,51 @@ impl Anime {
     pub fn get_episode_duration(&self) -> String {
         let duration: u64 = self.episode_duration
             .clone().unwrap_or_default().parse().unwrap_or_default();
+        if duration == 0 { return "N/A".to_string(); }
         let minutes = duration / 60000;
-        if minutes > 60 { return format!("{}hr {}min", minutes/60, minutes%60) }
+        if minutes > 60 { return format!("{}hr {}min", minutes/60, minutes%60); }
         format!("{}min", minutes)
+    }
+
+    pub fn get_available_episodes(&self) -> String {
+        format!(
+            "{} eps", 
+            self.available_episodes.sub
+        )
     }
 }
 
-fn get_month_name(month: u32) -> &'static str {
-    let months = vec![
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
-    if month > 12 { return months[11] }
-    months[month as usize - 1]
-}
+//fn get_month_name(month: u32) -> &'static str {
+//    let months = vec![
+//        "January", "February", "March", "April", "May", "June",
+//        "July", "August", "September", "October", "November", "December"
+//    ];
+//    if month > 12 { return months[11] }
+//    months[month as usize - 1]
+//}
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct AvailableEpisodes {
     sub: u32,
     dub: u32,
     raw: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct LastEpisodeDate {
     sub: DateOrEmpty,
     dub: DateOrEmpty ,
     raw: DateOrEmpty,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 enum DateOrEmpty {
     Date(EpisodeDate),
     Empty(EmptyStruct),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct EpisodeDate {
     //hour: u32,
     //minute: u32,
@@ -117,8 +132,14 @@ struct EpisodeDate {
     date: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct EmptyStruct {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct Season {
+    quarter: String,
+    year: u32,
+}
 
 //#[derive(Debug, Deserialize, Serialize)]
 //struct PageInfo {
