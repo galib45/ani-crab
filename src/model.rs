@@ -93,8 +93,10 @@ impl Anime {
         )
     }
 
-    pub fn get_episodes_list(&self) -> &Vec<String> {
-        &self.available_episodes_detail.sub
+    pub fn get_episodes_list(&self) -> Vec<String> {
+        let mut list = self.available_episodes_detail.sub.clone();
+        list.reverse();
+        list
     }
 }
 

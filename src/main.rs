@@ -37,39 +37,56 @@ fn main() -> Result<(), Box<dyn Error>> {
 	if let Some(anime) = selected_anime {
 	    // select episode from the episode list
 	    let mut episode_picker = FuzzyPicker::new();
-	    episode_picker.set_items(anime.get_episodes_list());
+	    let episode_list = anime.get_episodes_list();
+	    episode_picker.set_items(&episode_list);
 	    let selected_episode = episode_picker.pick()?;
 	    if let Some(episode_no) = selected_episode {
-		video_url_list = Vec::new();
-		// get source urls for the selected episode
-		let json: serde_json::Value = serde_json::from_str(
-		    &network.get_sources(&anime.id, "sub", &episode_no)?
-		)?;	
-		let sources = json["data"]["episode"]["sourceUrls"].as_array().unwrap();
-		for source in sources {
-		    let source_name = source["sourceName"].as_str().unwrap();
-		    match source_name {
-			"Luf-mp4" => { //| "Sak" | "Kir" | "S-mp4"
-			    let source_url = &source["sourceUrl"].as_str().unwrap()[2..];
-			    let provider_id = util::decode_provider_id(source_url);
-			    let json: serde_json::Value = serde_json::from_str(
-				&network.get_links(&provider_id)?
-			    )?;
-			    let links = json["links"].as_array().unwrap();
-			    for link in links {
-				let video_url = link["link"].as_str().unwrap();
-				if video_url.ends_with(".m3u8") {
-				    video_url_list.push(video_url.replace(".m3u8", ".360.m3u8"));
+		let length = episode
+		let index = episode_list.iter().position(|s| s == episode_no).unwrap();
+		let mut command_picker = FuzzyPicker::new();
+		let commands = vec!["replay", "next", "previous", "change quality", "exit"];
+		command_picker.set_items(&commands);
+		loop {
+		    video_url_list = Vec::new();
+		    // get source urls for the selected episode
+		    let json: serde_json::Value = serde_json::from_str(
+			&network.get_sources(&anime.id, "sub", &episode_no)?
+		    )?;	
+		    let sources = json["data"]["episode"]["sourceUrls"].as_array().unwrap();
+		    for source in sources {
+			let source_name = source["sourceName"].as_str().unwrap();
+			match source_name {
+			    "Luf-mp4" => { //| "Sak" | "Kir" | "S-mp4"
+				let source_url = &source["sourceUrl"].as_str().unwrap()[2..];
+				let provider_id = util::decode_provider_id(source_url);
+				let json: serde_json::Value = serde_json::from_str(
+				    &network.get_links(&provider_id)?
+				)?;
+				let links = json["links"].as_array().unwrap();
+				for link in links {
+				    let video_url = link["link"].as_str().unwrap();
+				    if video_url.ends_with(".m3u8") {
+					video_url_list.push(video_url.replace(".m3u8", ".360.m3u8"));
+				    }
 				}
-			    }
-			},
-			_ => {}
+			    },
+			    _ => {}
+			}
+		    }
+		    Command::new("mpv")
+			.arg(&video_url_list[0])
+			.output()
+			.expect("mpv command failed to start");
+		    let selected_command = command_picker.pick()?;
+		    if let Some(command) = selected_command {
+			match command {
+			    "exit" => break,
+			    "next" => 
+			    _ => {}
+			}
 		    }
 		}
-		Command::new("mpv")
-		    .arg(&video_url_list[0])
-		    .spawn()
-		    .expect("mpv command failed to start");
+		
 	    } else {
 		println!("Selection cancelled.")
 	    }
