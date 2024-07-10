@@ -1,11 +1,14 @@
-mod gql;
+mod network;
 mod model;
+mod util;
 
 use std::io::{stdin, stdout, Write};
+use std::process::Command;
 use std::error::Error;
 use fuzzypicker::FuzzyPicker;
-use reqwest::blocking::Client;
-use reqwest::header::{HeaderMap, HeaderValue, REFERER};
+//use reqwest::blocking::Client;
+//use reqwest::header::{HeaderMap, HeaderValue, REFERER};
+use crate::network::Network;
 
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -20,45 +23,53 @@ fn main() -> Result<(), Box<dyn Error>> {
     anime_name = String::from(anime_name.trim());
     println!("Searching for \"{anime_name}\"...");
 
-    let mut gql_query: gql::GqlQuery;
-    gql_query = gql::build_search_query(&anime_name);
-    let mut url = gql_query.get_url();    
-    let mut headers = HeaderMap::new();
-    headers.insert(REFERER, HeaderValue::from_str("https://allmanga.to")?);
-    let client = Client::builder()
-	.default_headers(headers)
-        .build()?;
-    let mut response = client.get(url).send()?;
-    let mut text = response.text()?;
-    //println!("{:?}", text);
-    let json: model::Json = serde_json::from_str(&text)?;
+    let network = Network::new()?;
+    let json: model::Json = serde_json::from_str(
+	&network.search_anime(&anime_name)?
+    )?;
     let anime_list = json.get_anime_list();
+    let mut video_url_list;
     if !anime_list.is_empty() {
+	// select anime from the search results
 	let mut anime_picker = FuzzyPicker::new();
 	anime_picker.set_items(&anime_list);
 	let selected_anime = anime_picker.pick()?;
 	if let Some(anime) = selected_anime {
+	    // select episode from the episode list
 	    let mut episode_picker = FuzzyPicker::new();
 	    episode_picker.set_items(anime.get_episodes_list());
 	    let selected_episode = episode_picker.pick()?;
-	    if let Some(episode) = selected_episode {
-		gql_query = gql::build_episode_query(anime.id, "sub", episode);
-		url = gql_query.get_url();
-		response = client.get(url).send()?;
-		text = response.text()?;
-		let json: serde_json::Value = serde_json::from_str(&text)?;
-		let sources = json["data"]["episode"]["sourceUrls"];
+	    if let Some(episode_no) = selected_episode {
+		video_url_list = Vec::new();
+		// get source urls for the selected episode
+		let json: serde_json::Value = serde_json::from_str(
+		    &network.get_sources(&anime.id, "sub", &episode_no)?
+		)?;	
+		let sources = json["data"]["episode"]["sourceUrls"].as_array().unwrap();
 		for source in sources {
-		    let source_name = source["sourceName"];
-		    match source_name.as_str() {
-			"Luf-mp4" | "Sak" | "Yt-mp4" | "S-mp4" => {
-			    println!("{}", source_name);
-			    println!("{}", source["sourceUrl"]);
-			    println!("");
+		    let source_name = source["sourceName"].as_str().unwrap();
+		    match source_name {
+			"Luf-mp4" => { //| "Sak" | "Kir" | "S-mp4"
+			    let source_url = &source["sourceUrl"].as_str().unwrap()[2..];
+			    let provider_id = util::decode_provider_id(source_url);
+			    let json: serde_json::Value = serde_json::from_str(
+				&network.get_links(&provider_id)?
+			    )?;
+			    let links = json["links"].as_array().unwrap();
+			    for link in links {
+				let video_url = link["link"].as_str().unwrap();
+				if video_url.ends_with(".m3u8") {
+				    video_url_list.push(video_url.replace(".m3u8", ".360.m3u8"));
+				}
+			    }
 			},
 			_ => {}
 		    }
 		}
+		Command::new("mpv")
+		    .arg(&video_url_list[0])
+		    .spawn()
+		    .expect("mpv command failed to start");
 	    } else {
 		println!("Selection cancelled.")
 	    }
