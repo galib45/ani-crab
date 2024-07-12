@@ -31,26 +31,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut video_url_list;
     if !anime_list.is_empty() {
 	// select anime from the search results
-	let mut anime_picker = FuzzyPicker::new();
-	anime_picker.set_items(&anime_list);
+	let mut anime_picker = FuzzyPicker::new(&anime_list);
 	let selected_anime = anime_picker.pick()?;
 	if let Some(anime) = selected_anime {
 	    // select episode from the episode list
-	    let mut episode_picker = FuzzyPicker::new();
 	    let episode_list = anime.get_episodes_list();
-	    episode_picker.set_items(&episode_list);
+	    let mut episode_picker = FuzzyPicker::new(&episode_list);
 	    let selected_episode = episode_picker.pick()?;
 	    if let Some(episode_no) = selected_episode {
-		let length = episode
-		let index = episode_list.iter().position(|s| s == episode_no).unwrap();
-		let mut command_picker = FuzzyPicker::new();
+		let total = episode_list.len();
+		let mut index = episode_list.iter().position(|s| s.as_str() == episode_no.as_str()).unwrap();
+		let mut quality = "360";
 		let commands = vec!["replay", "next", "previous", "change quality", "exit"];
-		command_picker.set_items(&commands);
+		let qualities = vec!["360", "480", "720", "1080"];
+		let mut command_picker = FuzzyPicker::new(&commands);
 		loop {
 		    video_url_list = Vec::new();
 		    // get source urls for the selected episode
 		    let json: serde_json::Value = serde_json::from_str(
-			&network.get_sources(&anime.id, "sub", &episode_no)?
+			&network.get_sources(&anime.id, "sub", &episode_list[index])?
 		    )?;	
 		    let sources = json["data"]["episode"]["sourceUrls"].as_array().unwrap();
 		    for source in sources {
@@ -66,7 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 				for link in links {
 				    let video_url = link["link"].as_str().unwrap();
 				    if video_url.ends_with(".m3u8") {
-					video_url_list.push(video_url.replace(".m3u8", ".360.m3u8"));
+					video_url_list.push(video_url.replace(".m3u8", format!(".{}.m3u8", quality).as_str()));
 				    }
 				}
 			    },
@@ -81,7 +80,21 @@ fn main() -> Result<(), Box<dyn Error>> {
 		    if let Some(command) = selected_command {
 			match command {
 			    "exit" => break,
-			    "next" => 
+			    "next" => {
+				if index < total-1 { index += 1; }
+				else { break; }
+			    },
+			    "previous" => {
+				if index > 0 { index -= 1; }
+				else { break; }
+			    },
+			    "change quality" => {
+				let mut quality_picker = FuzzyPicker::new(&qualities);
+				let selected_quality = quality_picker.pick()?;
+				if selected_quality != None {
+				    quality = selected_quality.unwrap();
+				}
+			    },
 			    _ => {}
 			}
 		    }
